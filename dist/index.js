@@ -158,7 +158,7 @@ async function updateEcsService(ecs, clusterName, service, taskDefArn, waitForSe
   core.info(`Deployment started. Watch this deployment's progress in the Amazon ECS console: https://${region}.${consoleHostname}/ecs/v2/clusters/${clusterName}/services/${service}/events?region=${region}`);
 
   // Wait for service stability
-  if (waitForService && waitForService.toLowerCase() === 'false') {
+  if (waitForService && waitForService.toLowerCase() === 'true') {
     core.debug(`Waiting for the service to become stable. Will wait for ${waitForMinutes} minutes`);
     await waitUntilTasksRunning({
       client: ecs,
