@@ -142,27 +142,29 @@ async function updateEcsService(ecs, clusterName, service, taskDefArn, waitForSe
   if (!isNaN(desiredCount) && desiredCount !== undefined) {
     params.desiredCount = desiredCount;
   }
-  await ecs.updateService(params);
 
-  const region = await ecs.config.region();
-  const consoleHostname = region.startsWith('cn') ? 'console.amazonaws.cn' : 'console.aws.amazon.com';
-
-  core.info(`Deployment started. Watch this deployment's progress in the Amazon ECS console: https://${region}.${consoleHostname}/ecs/v2/clusters/${clusterName}/services/${service}/events?region=${region}`);
-
-  // Wait for service stability
-  if (waitForService && waitForService.toLowerCase() === 'true') {
-    core.debug(`Waiting for the service to become stable. Will wait for ${waitForMinutes} minutes`);
-    await waitUntilServicesStable({
-      client: ecs,
-      minDelay: WAIT_DEFAULT_DELAY_SEC,
-      maxWaitTime: waitForMinutes * 60
-    }, {
-      services: [service],
-      cluster: clusterName
-    });
-  } else {
-    core.debug('Not waiting for the service to become stable');
-  }
+  console.log("Task ARN: ", taskDefArn);
+  // await ecs.updateService(params);
+  //
+  // const region = await ecs.config.region();
+  // const consoleHostname = region.startsWith('cn') ? 'console.amazonaws.cn' : 'console.aws.amazon.com';
+  //
+  // core.info(`Deployment started. Watch this deployment's progress in the Amazon ECS console: https://${region}.${consoleHostname}/ecs/v2/clusters/${clusterName}/services/${service}/events?region=${region}`);
+  //
+  // // Wait for service stability
+  // if (waitForService && waitForService.toLowerCase() === 'true') {
+  //   core.debug(`Waiting for the service to become stable. Will wait for ${waitForMinutes} minutes`);
+  //   await waitUntilServicesStable({
+  //     client: ecs,
+  //     minDelay: WAIT_DEFAULT_DELAY_SEC,
+  //     maxWaitTime: waitForMinutes * 60
+  //   }, {
+  //     services: [service],
+  //     cluster: clusterName
+  //   });
+  // } else {
+  //   core.debug('Not waiting for the service to become stable');
+  // }
 }
 
 // Find value in a CodeDeploy AppSpec file with a case-insensitive key
