@@ -1,7 +1,7 @@
 const path = require('path');
 const core = require('@actions/core');
 const { CodeDeploy, waitUntilDeploymentSuccessful } = require('@aws-sdk/client-codedeploy');
-const { ECS, waitUntilServicesStable, waitUntilTasksStopped } = require('@aws-sdk/client-ecs');
+const { ECS, waitUntilServicesStable, waitUntilTasksStopped, waitUntilTasksRunning } = require('@aws-sdk/client-ecs');
 const yaml = require('yaml');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -144,27 +144,35 @@ async function updateEcsService(ecs, clusterName, service, taskDefArn, waitForSe
   }
 
   console.log("Task ARN: ", taskDefArn);
-  // await ecs.updateService(params);
-  //
-  // const region = await ecs.config.region();
-  // const consoleHostname = region.startsWith('cn') ? 'console.amazonaws.cn' : 'console.aws.amazon.com';
-  //
-  // core.info(`Deployment started. Watch this deployment's progress in the Amazon ECS console: https://${region}.${consoleHostname}/ecs/v2/clusters/${clusterName}/services/${service}/events?region=${region}`);
-  //
-  // // Wait for service stability
-  // if (waitForService && waitForService.toLowerCase() === 'true') {
-  //   core.debug(`Waiting for the service to become stable. Will wait for ${waitForMinutes} minutes`);
-  //   await waitUntilServicesStable({
-  //     client: ecs,
-  //     minDelay: WAIT_DEFAULT_DELAY_SEC,
-  //     maxWaitTime: waitForMinutes * 60
-  //   }, {
-  //     services: [service],
-  //     cluster: clusterName
-  //   });
-  // } else {
-  //   core.debug('Not waiting for the service to become stable');
-  // }
+  await ecs.updateService(params);
+
+  const region = await ecs.config.region();
+  const consoleHostname = region.startsWith('cn') ? 'console.amazonaws.cn' : 'console.aws.amazon.com';
+
+  core.info(`Deployment started. Watch this deployment's progress in the Amazon ECS console: https://${region}.${consoleHostname}/ecs/v2/clusters/${clusterName}/services/${service}/events?region=${region}`);
+
+  // Wait for service stability
+  if (waitForService && waitForService.toLowerCase() === 'false') {
+    core.debug(`Waiting for the service to become stable. Will wait for ${waitForMinutes} minutes`);
+    await waitUntilTasksRunning({
+      client: ecs,
+      minDelay: WAIT_DEFAULT_DELAY_SEC,
+      maxWaitTime: waitForMinutes * 60
+    }, {
+      cluster: clusterName,
+      tasks: [taskDefArn]
+    })
+    // await waitUntilServicesStable({
+    //   client: ecs,
+    //   minDelay: WAIT_DEFAULT_DELAY_SEC,
+    //   maxWaitTime: waitForMinutes * 60
+    // }, {
+    //   services: [service],
+    //   cluster: clusterName
+    // });
+  } else {
+    core.debug('Not waiting for the service to become stable');
+  }
 }
 
 // Find value in a CodeDeploy AppSpec file with a case-insensitive key
