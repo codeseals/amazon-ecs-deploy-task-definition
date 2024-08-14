@@ -7,7 +7,7 @@
 const path = __nccwpck_require__(1017);
 const core = __nccwpck_require__(2186);
 const { CodeDeploy, waitUntilDeploymentSuccessful } = __nccwpck_require__(6692);
-const { ECS, waitUntilServicesStable, waitUntilTasksStopped, waitUntilTasksRunning } = __nccwpck_require__(8209);
+const { ECS, waitUntilServicesStable, waitUntilTasksStopped, DeregisterTaskDefinitionCommand } = __nccwpck_require__(8209);
 const yaml = __nccwpck_require__(4083);
 const fs = __nccwpck_require__(7147);
 const crypto = __nccwpck_require__(6113);
@@ -157,25 +157,22 @@ async function updateEcsService(ecs, clusterName, service, taskDefArn, waitForSe
 
   core.info(`Deployment started. Watch this deployment's progress in the Amazon ECS console: https://${region}.${consoleHostname}/ecs/v2/clusters/${clusterName}/services/${service}/events?region=${region}`);
 
+  // Deregister Task Definition
+  let oldTaskDefArn = taskDefArn.replace(/\d+$/, taskDefArn.split(":")[6] - 1);
+  let deregisterResp = await ecs.deregisterTaskDefinition({taskDefinition: oldTaskDefArn});
+  console.log(deregisterResp);
+
   // Wait for service stability
   if (waitForService && waitForService.toLowerCase() === 'true') {
     core.debug(`Waiting for the service to become stable. Will wait for ${waitForMinutes} minutes`);
-    await waitUntilTasksRunning({
+    await waitUntilServicesStable({
       client: ecs,
       minDelay: WAIT_DEFAULT_DELAY_SEC,
       maxWaitTime: waitForMinutes * 60
     }, {
-      cluster: clusterName,
-      tasks: [taskDefArn]
-    })
-    // await waitUntilServicesStable({
-    //   client: ecs,
-    //   minDelay: WAIT_DEFAULT_DELAY_SEC,
-    //   maxWaitTime: waitForMinutes * 60
-    // }, {
-    //   services: [service],
-    //   cluster: clusterName
-    // });
+      services: [service],
+      cluster: clusterName
+    });
   } else {
     core.debug('Not waiting for the service to become stable');
   }

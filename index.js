@@ -1,7 +1,7 @@
 const path = require('path');
 const core = require('@actions/core');
 const { CodeDeploy, waitUntilDeploymentSuccessful } = require('@aws-sdk/client-codedeploy');
-const { ECS, waitUntilServicesStable, waitUntilTasksStopped, waitUntilTasksRunning } = require('@aws-sdk/client-ecs');
+const { ECS, waitUntilServicesStable, waitUntilTasksStopped, DeregisterTaskDefinitionCommand } = require('@aws-sdk/client-ecs');
 const yaml = require('yaml');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -151,25 +151,22 @@ async function updateEcsService(ecs, clusterName, service, taskDefArn, waitForSe
 
   core.info(`Deployment started. Watch this deployment's progress in the Amazon ECS console: https://${region}.${consoleHostname}/ecs/v2/clusters/${clusterName}/services/${service}/events?region=${region}`);
 
+  // Deregister Task Definition
+  let oldTaskDefArn = taskDefArn.replace(/\d+$/, taskDefArn.split(":")[6] - 1);
+  let deregisterResp = await ecs.deregisterTaskDefinition({taskDefinition: oldTaskDefArn});
+  console.log(deregisterResp);
+
   // Wait for service stability
   if (waitForService && waitForService.toLowerCase() === 'true') {
     core.debug(`Waiting for the service to become stable. Will wait for ${waitForMinutes} minutes`);
-    await waitUntilTasksRunning({
+    await waitUntilServicesStable({
       client: ecs,
       minDelay: WAIT_DEFAULT_DELAY_SEC,
       maxWaitTime: waitForMinutes * 60
     }, {
-      cluster: clusterName,
-      tasks: [taskDefArn]
-    })
-    // await waitUntilServicesStable({
-    //   client: ecs,
-    //   minDelay: WAIT_DEFAULT_DELAY_SEC,
-    //   maxWaitTime: waitForMinutes * 60
-    // }, {
-    //   services: [service],
-    //   cluster: clusterName
-    // });
+      services: [service],
+      cluster: clusterName
+    });
   } else {
     core.debug('Not waiting for the service to become stable');
   }
